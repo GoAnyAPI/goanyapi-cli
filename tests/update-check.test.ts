@@ -55,12 +55,66 @@ test('uses the next tag and caches a successful registry check', async () => {
       fetch: fetcher,
       now: 2_000,
     });
+    const beforeExpiry = await checkForUpdate({
+      currentVersion: '0.0.1-next.1',
+      cacheFile,
+      fetch: fetcher,
+      now: 3_600_999,
+    });
+    const afterExpiry = await checkForUpdate({
+      currentVersion: '0.0.1-next.1',
+      cacheFile,
+      fetch: fetcher,
+      now: 3_601_000,
+    });
 
-    assert.equal(calls, 1);
+    assert.equal(calls, 2);
     assert.deepEqual(second, first);
+    assert.deepEqual(beforeExpiry, first);
+    assert.deepEqual(afterExpiry, first);
     assert.equal(first?.latestVersion, '0.0.1-next.2');
     assert.equal(first?.installCommand, 'npm install -g @goanyapi/cli@next');
     assert.match(renderUpdateNotice(first!), /0\.0\.1-next\.2/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('retries a failed registry check after five minutes', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'goanyapi-update-'));
+  const cacheFile = join(directory, 'update.json');
+  let calls = 0;
+  const fetcher: typeof fetch = async () => {
+    calls += 1;
+    return calls === 1
+      ? new Response(null, { status: 503 })
+      : Response.json({ latest: '0.0.2' });
+  };
+
+  try {
+    const failed = await checkForUpdate({
+      currentVersion: '0.0.1',
+      cacheFile,
+      fetch: fetcher,
+      now: 1_000,
+    });
+    const cachedFailure = await checkForUpdate({
+      currentVersion: '0.0.1',
+      cacheFile,
+      fetch: fetcher,
+      now: 300_999,
+    });
+    const retried = await checkForUpdate({
+      currentVersion: '0.0.1',
+      cacheFile,
+      fetch: fetcher,
+      now: 301_000,
+    });
+
+    assert.equal(failed, null);
+    assert.equal(cachedFailure, null);
+    assert.equal(calls, 2);
+    assert.equal(retried?.latestVersion, '0.0.2');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

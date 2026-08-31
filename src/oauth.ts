@@ -4,6 +4,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { DEFAULT_ENDPOINTS } from './config.js';
 import type { OAuthCredential } from './credential-store.js';
+import { CLIENT_INSTANCE_ID_PATTERN } from './installation-store.js';
 
 export const OAUTH_CLIENT_ID = 'goanyapi-cli';
 export const OAUTH_SCOPE = 'api:invoke';
@@ -285,6 +286,7 @@ function listen(server: Server): Promise<number> {
 }
 
 export async function loginWithBrowser(options: {
+  clientInstanceId: string;
   issuer?: string | undefined;
   resource?: string | undefined;
   fetch?: typeof fetch | undefined;
@@ -292,7 +294,10 @@ export async function loginWithBrowser(options: {
   onStatus?: ((message: string) => void) | undefined;
   timeoutMs?: number | undefined;
   now?: number | undefined;
-} = {}): Promise<OAuthCredential> {
+}): Promise<OAuthCredential> {
+  if (!CLIENT_INSTANCE_ID_PATTERN.test(options.clientInstanceId)) {
+    throw new OAuthError('The CLI installation identity is invalid.');
+  }
   const issuer = trimSlash(options.issuer ?? DEFAULT_OAUTH_ISSUER);
   const resource = trimSlash(options.resource ?? DEFAULT_OAUTH_RESOURCE);
   const metadata = await loadOAuthMetadata({ issuer, fetch: options.fetch });
@@ -363,6 +368,10 @@ export async function loginWithBrowser(options: {
   const authorizationUrl = new URL(metadata.authorizationEndpoint);
   authorizationUrl.searchParams.set('response_type', 'code');
   authorizationUrl.searchParams.set('client_id', OAUTH_CLIENT_ID);
+  authorizationUrl.searchParams.set(
+    'client_instance_id',
+    options.clientInstanceId
+  );
   authorizationUrl.searchParams.set('redirect_uri', redirectUri);
   authorizationUrl.searchParams.set('scope', OAUTH_SCOPE);
   authorizationUrl.searchParams.set('resource', resource);

@@ -149,6 +149,10 @@ test('saves OAuth login and reports authentication status', async () => {
       stderr: output.writeErr,
       env: {},
       credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () =>
+          'gai_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      },
       login: async () => oauth,
     }),
     0
@@ -191,6 +195,10 @@ test('login uses release OAuth defaults independently from the API base URL', as
       stderr: output.writeErr,
       env: {},
       credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () =>
+          'gai_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+      },
       login: async (options) => {
         loginOptions = options;
         return oauth;
@@ -200,6 +208,38 @@ test('login uses release OAuth defaults independently from the API base URL', as
   );
   assert.equal(loginOptions?.issuer, DEFAULT_ENDPOINTS.oauthIssuer);
   assert.equal(loginOptions?.resource, DEFAULT_ENDPOINTS.oauthResource);
+  assert.equal(
+    loginOptions?.clientInstanceId,
+    'gai_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+  );
+});
+
+test('logout preserves the persistent client installation identity', async () => {
+  const output = capture();
+  const credentials = memoryStore({
+    kind: 'api_key',
+    apiKey: 'ga_saved',
+  });
+  let installationStoreAccessed = false;
+
+  assert.equal(
+    await runCli(['logout'], {
+      stdout: output.writeOut,
+      stderr: output.writeErr,
+      env: {},
+      credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () => {
+          installationStoreAccessed = true;
+          return 'gai_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC';
+        },
+      },
+    }),
+    0
+  );
+
+  assert.equal(credentials.current(), null);
+  assert.equal(installationStoreAccessed, false);
 });
 
 test('auth set-key uses hidden prompt input and stores the key', async () => {

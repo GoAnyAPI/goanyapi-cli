@@ -16,6 +16,7 @@ The official command-line client for [GoAnyAPI](https://goanyapi.com), built for
 - **Easy interactive login** — OAuth Authorization Code with PKCE opens the browser and returns through a loopback callback.
 - **Automation-ready** — API keys work naturally in CI/CD, cron, Docker, and server scripts.
 - **Secure credential storage** — credentials use Windows Credential Locker, macOS Keychain, or Linux Secret Service.
+- **Per-installation authorization** — each OS-user installation keeps a random client identity, so repeated logins replace the same connection while other computers remain independently revocable.
 - **Structured output** — choose pretty JSON, compact JSON, raw responses, or only the response `data` field.
 
 ## Who is it for?

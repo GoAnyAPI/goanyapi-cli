@@ -16,6 +16,7 @@
 - **交互登录简单** — 使用 OAuth Authorization Code + PKCE，自动打开浏览器并通过本机回调完成授权。
 - **适合自动化** — API Key 可用于 CI/CD、Cron、Docker 和服务器脚本。
 - **凭证安全存储** — 使用 Windows Credential Locker、macOS Keychain 或 Linux Secret Service。
+- **按安装实例授权** — 每个操作系统用户下的 CLI 安装保存随机客户端标识；同一客户端重新登录会替换原连接，不同电脑可独立撤销。
 - **结构化输出** — 支持格式化 JSON、紧凑 JSON、原始响应，以及只输出 `data` 字段。
 
 ## 适合哪些场景？

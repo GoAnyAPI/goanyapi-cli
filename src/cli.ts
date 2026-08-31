@@ -11,6 +11,10 @@ import {
 } from './credential-store.js';
 import { ApiRequestError, UsageError } from './errors.js';
 import {
+  createSystemInstallationStore,
+  type InstallationStore,
+} from './installation-store.js';
+import {
   DEFAULT_OAUTH_ISSUER,
   DEFAULT_OAUTH_RESOURCE,
   loginWithBrowser,
@@ -33,6 +37,7 @@ export interface CliDependencies {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   credentialStore?: CredentialStore;
+  installationStore?: InstallationStore;
   login?: typeof loginWithBrowser;
   promptSecret?: (label: string) => Promise<string>;
   now?: () => number;
@@ -61,9 +66,16 @@ export async function runCli(
   const stderr = dependencies.stderr ?? ((text) => process.stderr.write(text));
   const fetcher = dependencies.fetch ?? globalThis.fetch;
   let credentialStore = dependencies.credentialStore;
+  let installationStore = dependencies.installationStore;
   const getCredentialStore = () => {
     credentialStore ??= createSystemCredentialStore();
     return credentialStore;
+  };
+  const getInstallationStore = () => {
+    installationStore ??= createSystemInstallationStore({
+      env: dependencies.env ?? process.env,
+    });
+    return installationStore;
   };
 
   try {
@@ -114,7 +126,9 @@ export async function runCli(
 
     if (command === 'login') {
       if (rest.length > 1) throw new UsageError('login does not accept arguments.');
+      const clientInstanceId = await getInstallationStore().loadOrCreate();
       const oauth = await (dependencies.login ?? loginWithBrowser)({
+        clientInstanceId,
         issuer:
           (dependencies.env ?? process.env).GOANYAPI_OAUTH_ISSUER ??
           DEFAULT_OAUTH_ISSUER,
