@@ -249,18 +249,6 @@ CLI 在交互式终端中检查对应的 npm 发布通道，并可能输出非�
 - 无人值守任务应优先使用可独立撤销的 API Key。
 - AI Agent 可能做出错误决策。请审查可能暴露私有业务数据的命令，并只授予必要权限。
 
-## 本地开发
-
-```bash
-git clone https://github.com/GoAnyAPI/goanyapi-cli.git
-cd goanyapi-cli
-pnpm install
-pnpm check
-pnpm link --global
-```
-
-本地开发需要 Node.js 20 或更高版本，以及 pnpm 10。
-
 ## 相关链接
 
 - [GoAnyAPI](https://goanyapi.com)

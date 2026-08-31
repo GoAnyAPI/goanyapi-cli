@@ -258,18 +258,6 @@ Interactive terminals check the matching npm channel and may print a non-blockin
 - Prefer independently revocable API keys for unattended automation.
 - AI agents can make incorrect decisions. Review commands that may expose private business data and grant only the access required.
 
-## Development
-
-```bash
-git clone https://github.com/GoAnyAPI/goanyapi-cli.git
-cd goanyapi-cli
-pnpm install
-pnpm check
-pnpm link --global
-```
-
-Local development requires Node.js 20+ and pnpm 10.
-
 ## Links
 
 - [GoAnyAPI](https://goanyapi.com)
