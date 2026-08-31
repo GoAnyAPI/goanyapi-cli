@@ -1,109 +1,176 @@
 # GoAnyAPI CLI
 
-The official command-line client for GoAnyAPI. The CLI uses the same
-machine-readable catalog as the GoAnyAPI API and MCP server and currently
-covers all 17 public read-only endpoints.
+[![npm version](https://img.shields.io/npm/v/@goanyapi/cli.svg)](https://www.npmjs.com/package/@goanyapi/cli)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933.svg)](https://nodejs.org/)
 
-## Install
+[中文](./README.zh.md) | [English](./README.md)
+
+The official command-line client for [GoAnyAPI](https://goanyapi.com), built for humans and AI agents. Query website traffic, SEO metrics, search results, advertising intelligence, and account data from a terminal with OAuth or API key authentication and structured output.
+
+[Install](#installation--quick-start) · [AI agents](#quick-start-for-ai-agents) · [Authentication](#authentication) · [Commands](#commands) · [Advanced](#advanced-usage) · [Security](#security)
+
+## Why GoAnyAPI CLI?
+
+- **Agent-friendly** — predictable commands, machine-readable schemas, JSON output, meaningful exit codes, and no prompts during API calls.
+- **Always current** — commands and parameters come from the GoAnyAPI online catalog instead of a stale bundled snapshot.
+- **Easy interactive login** — OAuth Authorization Code with PKCE opens the browser and returns through a loopback callback.
+- **Automation-ready** — API keys work naturally in CI/CD, cron, Docker, and server scripts.
+- **Secure credential storage** — credentials use Windows Credential Locker, macOS Keychain, or Linux Secret Service.
+- **Structured output** — choose pretty JSON, compact JSON, raw responses, or only the response `data` field.
+
+## Who is it for?
+
+| You are... | Recommended path |
+| --- | --- |
+| A terminal user | Install globally, run `goanyapi login`, then invoke an API command. |
+| An AI coding agent user | Log in once, then let Codex, Claude Code, or another terminal-capable agent run `goanyapi ... --output json`. |
+| A CI/CD or server operator | Provide `GOANYAPI_API_KEY` through your secret manager; do not use interactive OAuth. |
+| An MCP client user | Use the dedicated [GoAnyAPI MCP server](https://mcp.goanyapi.com/mcp) for native MCP tools. CLI OAuth and MCP OAuth are separate. |
+
+## Capabilities
+
+| Category | Capabilities |
+| --- | --- |
+| Website intelligence | Traffic estimates, rankings, traffic sources, Domain Rating, and backlinks |
+| Keyword research | Keyword difficulty, keyword generation, and search suggestions |
+| Search intelligence | Google and Bing SERP data, Top 10 results, `intitle` queries, and site search |
+| Advertising intelligence | AdSense lookup, Google Ads Transparency, and advertising statistics |
+| Account | Credit balance and paginated credit activity |
+
+The server publishes the authoritative catalog. Run `goanyapi list` to see the current APIs.
+
+## Installation & quick start
+
+### Requirements
+
+- Node.js 20 or newer
+- npm or a compatible package manager
+- A GoAnyAPI account for OAuth, or a GoAnyAPI API key
+
+### Install
+
+```bash
+npm install --global @goanyapi/cli
+goanyapi --version
+```
+
+### Quick start for humans
+
+```bash
+# 1. Sign in through the browser
+goanyapi login
+
+# 2. Verify authentication
+goanyapi auth status
+
+# 3. Discover current APIs
+goanyapi list
+
+# 4. Make a request
+goanyapi traffic example.com --month 3
+```
+
+Browser login uses the fixed public OAuth client `goanyapi-cli`, resource `https://api.goanyapi.com`, and scope `api:invoke`.
+
+## Quick start for AI agents
+
+> Some steps require the user to finish authorization in a browser. An agent must never read, print, or copy credentials from the system credential store.
+
+### Step 1 — Install
 
 ```bash
 npm install --global @goanyapi/cli
 ```
 
-To test the upcoming release against the GoAnyAPI test environment:
+### Step 2 — Ask the user to authorize
+
+Run this in a visible user terminal because it opens a browser and waits for the loopback callback:
 
 ```bash
-npm install --global @goanyapi/cli@next
+goanyapi login
 ```
 
-Versions containing the `-next` prerelease identifier use `www2.goanyapi.com`
-for OAuth and `api2.goanyapi.com` for API requests. Stable versions use the
-production endpoints. Environment variables remain available as development
-overrides.
-
-In an interactive terminal, the CLI checks the matching npm release channel
-and prints a non-blocking update notice at most once every 24 hours. Set
-`GOANYAPI_NO_UPDATE_CHECK=1` to disable this check. CI and non-interactive
-processes do not display update notices.
-
-For local development:
+### Step 3 — Verify and call an API
 
 ```bash
-pnpm install
-pnpm build
-pnpm link --global
+goanyapi auth status
+goanyapi list --output json
+goanyapi traffic example.com --month 3 --output json
+goanyapi dr example.com --output json
+goanyapi serp --q "open source" --gl us --output json
+goanyapi credits-balance --data-only --output json
 ```
 
-Node.js 20 or newer is required.
+For reliable agent use, add this guidance to `AGENTS.md`, `CLAUDE.md`, or equivalent instructions:
+
+```md
+When website, SEO, search-result, or advertising data is needed, use the
+globally installed `goanyapi` CLI. Add `--output json` to API commands. Run
+`goanyapi list --output json` to discover APIs and
+`goanyapi describe <command> --output json` to inspect parameters. Never read
+or expose saved OAuth tokens or API keys.
+```
+
+The agent must run as the same operating-system user that completed `goanyapi login`. Windows credentials are not automatically available inside WSL, Docker, another machine, or a remote agent runtime.
 
 ## Authentication
 
-For interactive use, sign in with OAuth. The CLI uses Authorization Code with
-PKCE, opens the browser, and listens only on a random `127.0.0.1` callback
-port:
+| Scenario | Recommended credential |
+| --- | --- |
+| Interactive use | OAuth with PKCE |
+| CI/CD, cron, Docker, and server scripts | API key through an environment variable |
+| One-off command | `--api-key` or `GOANYAPI_API_KEY` |
+| Repeated local API-key use | `goanyapi auth set-key` |
+
+### OAuth
 
 ```bash
 goanyapi login
 goanyapi auth status
-goanyapi traffic example.com
 goanyapi logout
 ```
 
-The fixed public OAuth client is `goanyapi-cli`, with resource
-`https://api.goanyapi.com` and scope `api:invoke`. OAuth access and refresh
-tokens are stored in Windows Credential Locker, macOS Keychain, or Linux
-Secret Service; they are not written to a plaintext config file.
+Access tokens refresh automatically near expiry. Logout attempts remote revocation and always removes the local credential.
 
-For CI/CD, cron, Docker, and server scripts, use an independently revocable API
-key through the environment:
+### API key
+
+macOS and Linux:
 
 ```bash
-export GOANYAPI_API_KEY="your-api-key"
+export GOANYAPI_API_KEY="ga_xxx"
+goanyapi traffic example.com --month 3 --output json
 ```
 
 PowerShell:
 
 ```powershell
-$env:GOANYAPI_API_KEY = "your-api-key"
+$env:GOANYAPI_API_KEY = "ga_xxx"
+goanyapi traffic example.com --month 3 --output json
 ```
 
-You can also pass `--api-key` / `-k` for one invocation, or save a key in the
-same system credential store without putting it in shell history:
+Save a key in the system credential store without placing it directly in shell history:
 
 ```bash
 goanyapi auth set-key
 ```
 
-An explicit `--api-key` or `GOANYAPI_API_KEY` takes precedence over saved
-credentials. Credentials are never printed in command output or errors.
+Credential precedence is `--api-key`, then `GOANYAPI_API_KEY`, then a saved API key or OAuth credential.
 
-## Usage
+## Commands
+
+### Discover APIs and schemas
 
 ```bash
-# Discover APIs and inspect their parameters
 goanyapi list
+goanyapi list --output json
 goanyapi describe traffic
-goanyapi serp --help
-
-# A required option can also be supplied as a positional argument
-goanyapi traffic --domain example.com --month 3
-goanyapi traffic example.com --month 3
-
-# Query structured search results
-goanyapi serp --q "open source" --gl us --hl en
-
-# Print only the response envelope's data field
-goanyapi credits-balance --data-only --output json
-goanyapi balance --data-only --output json
+goanyapi describe traffic --output json
+goanyapi traffic --help
 ```
 
-Catalog camelCase and snake_case names also have kebab-case CLI spellings:
+The CLI loads `/api/v1/mcp/catalog`. If the online catalog is unavailable or invalid, the command fails rather than using an outdated local definition.
 
-- `creativeIds`: `--creativeIds` or `--creative-ids`
-- `setLang`: `--setLang` or `--set-lang`
-- `search_type`: `--search_type` or `--search-type`
-
-## API commands
+### API commands
 
 | Command | Purpose |
 | --- | --- |
@@ -111,23 +178,43 @@ Catalog camelCase and snake_case names also have kebab-case CLI spellings:
 | `dr` | Domain Rating |
 | `backlink` | Backlink data |
 | `keyword-difficulty` | Keyword difficulty |
-| `keyword-generator` | Keyword generation |
-| `google-autocomplete` | Google search suggestions |
-| `bing-autocomplete` | Bing search suggestions |
-| `top10-serp` | Top 10 search results |
-| `serp` | Structured Google results |
-| `bing-serp` | Structured Bing results |
+| `keyword-generator` | Related keyword generation |
+| `google-autocomplete` | Google autocomplete suggestions |
+| `bing-autocomplete` | Bing autocomplete suggestions |
+| `top10-serp` | Top search results |
+| `serp` | Structured Google search results |
+| `bing-serp` | Structured Bing search results |
 | `google-intitle` | Google title search |
-| `google-site-search` | Google site search |
-| `adsense` | AdSense domain and publisher ID lookup |
-| `transparency` | Google Ads Transparency |
+| `google-site-search` | Google site-restricted search |
+| `adsense` | AdSense domain and publisher lookup |
+| `transparency` | Google Ads Transparency data |
 | `ads-statistics` | Advertising statistics |
-| `activity-credits` | Paginated account credit activity |
-| `credits-balance` | Credit balance (alias: `balance`) |
+| `activity-credits` | Paginated credit activity |
+| `credits-balance` | Credit balance; alias: `balance` |
 
-Run `goanyapi describe <command>` for the current argument schema.
+Required parameters may also be positionals when unambiguous:
 
-## Global options
+```bash
+goanyapi traffic --domain example.com --month 3
+goanyapi traffic example.com --month 3
+```
+
+Catalog names accept kebab-case aliases: `creativeIds`, `setLang`, and `search_type` may be written as `--creative-ids`, `--set-lang`, and `--search-type`.
+
+## Advanced usage
+
+### Output modes
+
+```bash
+--output pretty   # Indented JSON (default)
+--output json     # Compact JSON for agents and scripts
+--output raw      # Original response body
+--data-only       # Only the response envelope's data field
+```
+
+`--data-only` cannot be combined with `--output raw`. Results go to stdout; errors and update notices go to stderr.
+
+### Global options
 
 ```text
 -k, --api-key <key>       API key (or GOANYAPI_API_KEY)
@@ -139,9 +226,55 @@ Run `goanyapi describe <command>` for the current argument schema.
 -V, --version              Show version
 ```
 
-The CLI loads the current schema from `/api/v1/mcp/catalog`. If the catalog is
-unavailable or invalid, the command fails instead of using a potentially stale
-local definition. Required arguments, types, enum values, and unknown fields
-are validated before the API request is sent.
+### Environment variables
 
-Exit codes: `0` success, `1` API or network error, and `2` usage error.
+| Variable | Purpose |
+| --- | --- |
+| `GOANYAPI_API_KEY` | API key for non-interactive authentication |
+| `GOANYAPI_BASE_URL` | Override the REST API base URL |
+| `GOANYAPI_OAUTH_ISSUER` | Override the OAuth issuer for development |
+| `GOANYAPI_OAUTH_RESOURCE` | Override the OAuth resource for development |
+| `GOANYAPI_NO_UPDATE_CHECK=1` | Disable npm update checks |
+
+Stable releases use production endpoints. Versions containing `-next` use GoAnyAPI test endpoints by default.
+
+### Update notices
+
+Interactive terminals check the matching npm channel and may print a non-blocking update notice. Successful checks are cached for 24 hours. CI and non-interactive processes do not display notices.
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `1` | API, auth-status, network, or runtime failure |
+| `2` | Invalid command or argument usage |
+
+## Security
+
+- OAuth uses Authorization Code with PKCE; the public client has no client secret.
+- The callback binds only to `127.0.0.1` on a random port.
+- Tokens and saved API keys use the OS-native credential service, not a plaintext project file.
+- Credentials are not printed in normal output or error messages.
+- CLI OAuth tokens use the REST API audience and `api:invoke` scope; they are not MCP tokens.
+- Prefer independently revocable API keys for unattended automation.
+- AI agents can make incorrect decisions. Review commands that may expose private business data and grant only the access required.
+
+## Development
+
+```bash
+git clone https://github.com/GoAnyAPI/goanyapi-cli.git
+cd goanyapi-cli
+pnpm install
+pnpm check
+pnpm link --global
+```
+
+Local development requires Node.js 20+ and pnpm 10.
+
+## Links
+
+- [GoAnyAPI](https://goanyapi.com)
+- [GoAnyAPI CLI on npm](https://www.npmjs.com/package/@goanyapi/cli)
+- [Source code](https://github.com/GoAnyAPI/goanyapi-cli)
+- [Issue tracker](https://github.com/GoAnyAPI/goanyapi-cli/issues)

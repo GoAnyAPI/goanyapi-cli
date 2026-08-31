@@ -1,14 +1,31 @@
 {
   "name": "@goanyapi/cli",
-  "version": "0.0.1-next.1",
-  "description": "Official command-line client for GoAnyAPI",
+  "version": "0.0.1",
+  "description": "Official GoAnyAPI CLI for humans and AI agents",
+  "keywords": [
+    "goanyapi",
+    "cli",
+    "api",
+    "oauth",
+    "seo",
+    "ai-agent"
+  ],
+  "homepage": "https://goanyapi.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoAnyAPI/goanyapi-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GoAnyAPI/goanyapi-cli/issues"
+  },
   "type": "module",
   "bin": {
     "goanyapi": "dist/bin.js"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "README.zh.md"
   ],
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
