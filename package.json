@@ -1,6 +1,6 @@
 {
   "name": "@goanyapi/cli",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "Official GoAnyAPI CLI for humans and AI agents",
   "keywords": [
     "goanyapi",
@@ -31,7 +31,8 @@
     "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "release": "node scripts/release.mjs"
   },
   "engines": {
     "node": ">=20"

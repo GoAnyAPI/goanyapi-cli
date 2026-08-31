@@ -33,7 +33,7 @@ test('stable and unrelated prerelease versions use production', () => {
 });
 
 test('current package version selects the exported defaults', () => {
-  assert.equal(VERSION, '0.0.3');
+  assert.equal(VERSION, '0.0.5');
   assert.equal(DEFAULT_ENDPOINTS.oauthIssuer, 'https://goanyapi.com');
   assert.equal(DEFAULT_ENDPOINTS.oauthResource, 'https://api.goanyapi.com');
   assert.equal(DEFAULT_ENDPOINTS.apiBaseUrl, 'https://api.goanyapi.com');
