@@ -49,6 +49,51 @@ test('accepts kebab-case aliases for camelCase API fields', () => {
   );
 });
 
+test('maps child interface names to actions and validates their oneOf branch', () => {
+  assert.deepEqual(
+    parseCommandParameters(api('ads-statistics'), [
+      'advertiser-search',
+      '--keyword',
+      'ai',
+    ]),
+    { action: 'advertiserSearch', keyword: 'ai' }
+  );
+  assert.throws(
+    () => parseCommandParameters(api('ads-statistics'), ['advertiser-search']),
+    (error) => error instanceof UsageError && /--keyword/.test(error.message)
+  );
+  assert.throws(
+    () =>
+      parseCommandParameters(api('ads-statistics'), [
+        'advertiser-statistics',
+        '--advertiser-id',
+        'not-numeric',
+        '--start-day',
+        '2026-03-01',
+        '--end-day',
+        '2026-03-31',
+      ]),
+    (error) => error instanceof UsageError && /invalid format/.test(error.message)
+  );
+});
+
+test('requires exactly one transparency mode', () => {
+  assert.deepEqual(
+    parseCommandParameters(api('transparency'), ['--domain', 'example.com']),
+    { domain: 'example.com' }
+  );
+  assert.throws(
+    () =>
+      parseCommandParameters(api('transparency'), [
+        '--domain',
+        'example.com',
+        '--keyword',
+        'ai',
+      ]),
+    (error) => error instanceof UsageError && /exactly one mode/.test(error.message)
+  );
+});
+
 test('rejects missing, unknown, and invalid enum parameters', () => {
   assert.throws(
     () => parseCommandParameters(api('traffic'), []),

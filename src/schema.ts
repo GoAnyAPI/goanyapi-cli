@@ -54,9 +54,21 @@ function parseValue(schema: JsonSchema, values: string[], name: string): unknown
   }
 
   if (schema.enum && !schema.enum.includes(parsed)) {
-    throw new UsageError(
-      '--' + toKebabCase(name) + ' must be one of: ' + schema.enum.join(', ') + '.'
-    );
+    const alias =
+      typeof parsed === 'string'
+        ? schema.enum.find(
+            (item) => typeof item === 'string' && toKebabCase(item) === parsed
+          )
+        : undefined;
+    if (alias === undefined) {
+      throw new UsageError(
+        '--' + toKebabCase(name) + ' must be one of: ' +
+          schema.enum.map((item) =>
+            typeof item === 'string' ? toKebabCase(item) : item
+          ).join(', ') + '.'
+      );
+    }
+    parsed = alias;
   }
   if (
     typeof parsed === 'number' &&
@@ -76,7 +88,76 @@ function parseValue(schema: JsonSchema, values: string[], name: string): unknown
       '--' + toKebabCase(name) + ' must be at most ' + schema.maximum + '.'
     );
   }
+  if (
+    typeof parsed === 'string' &&
+    schema.minLength !== undefined &&
+    parsed.length < schema.minLength
+  ) {
+    throw new UsageError(
+      '--' + toKebabCase(name) + ' must contain at least ' +
+        schema.minLength + ' character(s).'
+    );
+  }
+  if (
+    typeof parsed === 'string' &&
+    schema.pattern !== undefined &&
+    !new RegExp(schema.pattern).test(parsed)
+  ) {
+    throw new UsageError('--' + toKebabCase(name) + ' has an invalid format.');
+  }
   return parsed;
+}
+
+function isPresent(result: Record<string, unknown>, name: string): boolean {
+  return name in result && result[name] !== '' && result[name] !== undefined;
+}
+
+function matchesBranchEnums(
+  branch: JsonSchema,
+  result: Record<string, unknown>
+): boolean {
+  for (const [name, schema] of Object.entries(branch.properties ?? {})) {
+    if (
+      isPresent(result, name) &&
+      schema.enum &&
+      !schema.enum.includes(result[name] as never)
+    ) return false;
+  }
+  return true;
+}
+
+function validateOneOf(
+  schema: JsonSchema,
+  result: Record<string, unknown>
+): void {
+  const branches = schema.oneOf;
+  if (!branches?.length) return;
+
+  const compatible = branches.filter((branch) => matchesBranchEnums(branch, result));
+  if (compatible.length === 1) {
+    const missing = (compatible[0]?.required ?? []).find(
+      (name) => !isPresent(result, name)
+    );
+    if (missing) {
+      throw new UsageError('Missing required option --' + toKebabCase(missing) + '.');
+    }
+    return;
+  }
+
+  const matching = compatible.filter((branch) =>
+    (branch.required ?? []).every((name) => isPresent(result, name))
+  );
+  if (matching.length !== 1) {
+    const alternatives = branches
+      .map((branch) => (branch.required ?? [])
+        .map((name) => '--' + toKebabCase(name)).join(', '))
+      .filter(Boolean)
+      .join(' | ');
+    throw new UsageError(
+      'Parameters must match exactly one mode' +
+        (alternatives ? ': ' + alternatives : '') + '.'
+    );
+  }
 }
 
 export function resolveParameterName(
@@ -111,5 +192,6 @@ export function coerceParameters(
       throw new UsageError('Missing required option --' + toKebabCase(name) + '.');
     }
   }
+  validateOneOf(definition.inputSchema, result);
   return result;
 }

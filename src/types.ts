@@ -9,7 +9,11 @@ export type JsonSchema = {
   default?: string | number | boolean;
   minimum?: number;
   maximum?: number;
+  minLength?: number;
+  pattern?: string;
   additionalProperties?: boolean;
+  oneOf?: JsonSchema[];
+  examples?: unknown[];
 };
 
 export interface PublicApiDefinition {

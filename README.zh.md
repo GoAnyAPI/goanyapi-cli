@@ -162,27 +162,24 @@ goanyapi traffic --help
 
 CLI 从 `/api/v1/mcp/catalog` 加载 Catalog。如果在线 Catalog 不可用或格式错误，命令会直接失败，不会使用过期的本地定义。
 
-### API 命令
+### API 命令和子接口
 
-| 命令 | 用途 |
-| --- | --- |
-| `traffic` | 网站流量、排名和流量来源 |
-| `dr` | Domain Rating |
-| `backlink` | 外链数据 |
-| `keyword-difficulty` | 关键词难度 |
-| `keyword-generator` | 相关关键词生成 |
-| `google-autocomplete` | Google 搜索建议 |
-| `bing-autocomplete` | Bing 搜索建议 |
-| `top10-serp` | 搜索结果 Top 10 |
-| `serp` | 结构化 Google 搜索结果 |
-| `bing-serp` | 结构化 Bing 搜索结果 |
-| `google-intitle` | Google 标题搜索 |
-| `google-site-search` | Google 站内搜索 |
-| `adsense` | AdSense 域名和发布商查询 |
-| `transparency` | Google Ads Transparency 数据 |
-| `ads-statistics` | 广告统计 |
-| `activity-credits` | 分页积分活动记录 |
-| `credits-balance` | 积分余额；别名：`balance` |
+线上 Catalog 是唯一数据源。README 不重复维护完整命令清单，因此服务端新增 API
+或子接口后，无需发布文档版本即可被发现：
+
+```bash
+# 列出当前全部顶层 API
+goanyapi list
+
+# 查看参数、子接口模式和 Catalog 示例
+goanyapi describe ads-statistics
+
+# 调用由 action + oneOf 定义的子接口
+goanyapi ads-statistics advertiser-search --keyword ai --output json
+
+# 调用 oneOf 查询模式
+goanyapi transparency --domain example.com --output json
+```
 
 必填参数既可以按名称传入，也可以在没有歧义时作为位置参数：
 

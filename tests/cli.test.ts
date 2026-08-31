@@ -62,6 +62,20 @@ test('shows help for API and utility commands', async () => {
   );
   assert.match(apiHelp.stdout(), /--q <string> \(required\)/);
 
+  const childHelp = capture();
+  assert.equal(
+    await runCli(['describe', 'ads-statistics'], {
+      fetch: async () => catalogResponse(),
+      stdout: childHelp.writeOut,
+      stderr: childHelp.writeErr,
+      env: {},
+    }),
+    0
+  );
+  assert.match(childHelp.stdout(), /Modes:/);
+  assert.match(childHelp.stdout(), /advertiser-search/);
+  assert.match(childHelp.stdout(), /goanyapi ads-statistics advertiser-search/);
+
   const listHelp = capture();
   assert.equal(
     await runCli(['list', '--help'], {

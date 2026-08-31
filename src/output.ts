@@ -44,9 +44,58 @@ export function renderGeneralHelp(): string {
 }
 
 function schemaType(schema: JsonSchema): string {
-  if (schema.enum?.length) return schema.enum.join('|');
+  if (schema.enum?.length) {
+    return schema.enum
+      .map((item) => (typeof item === 'string' ? toKebabCase(item) : item))
+      .join('|');
+  }
   if (schema.type === 'array') return (schema.items?.type ?? 'value') + '[]';
   return schema.type;
+}
+
+function renderModes(definition: PublicApiDefinition): string[] {
+  const branches = definition.inputSchema.oneOf ?? [];
+  if (!branches.length) return [];
+  return [
+    '',
+    'Modes:',
+    ...branches.map((branch) => {
+      const action = branch.properties?.action?.enum?.[0];
+      const mode = typeof action === 'string'
+        ? toKebabCase(action)
+        : toKebabCase(branch.required?.[0] ?? 'mode');
+      const required = (branch.required ?? [])
+        .filter((name) => name !== 'action')
+        .map((name) => {
+          const schema = definition.inputSchema.properties?.[name];
+          return '--' + toKebabCase(name) + ' <' +
+            schemaType(schema ?? { type: 'string' }) + '>';
+        })
+        .join(' ');
+      return '  ' + mode + (required ? '  ' + required : '');
+    }),
+  ];
+}
+
+function renderExamples(definition: PublicApiDefinition): string[] {
+  const examples = definition.inputSchema.examples ?? [];
+  const lines = examples
+    .filter((example): example is Record<string, unknown> =>
+      typeof example === 'object' && example !== null && !Array.isArray(example)
+    )
+    .map((example) => {
+      const action = typeof example.action === 'string' ? example.action : undefined;
+      const argumentsText = Object.entries(example)
+        .filter(([name]) => name !== 'action')
+        .map(([name, value]) =>
+          '--' + toKebabCase(name) + ' ' + JSON.stringify(value)
+        )
+        .join(' ');
+      return '  goanyapi ' + definition.id +
+        (action ? ' ' + toKebabCase(action) : '') +
+        (argumentsText ? ' ' + argumentsText : '');
+    });
+  return lines.length ? ['', 'Examples:', ...lines] : [];
 }
 
 export function renderDescription(definition: PublicApiDefinition): string {
@@ -82,6 +131,8 @@ export function renderDescription(definition: PublicApiDefinition): string {
   } else {
     lines.push('', 'This API has no arguments.');
   }
+
+  lines.push(...renderModes(definition), ...renderExamples(definition));
 
   lines.push('', 'Endpoint: ' + definition.method + ' ' + definition.path);
   if (definition.docsPath) {

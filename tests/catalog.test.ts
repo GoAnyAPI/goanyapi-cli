@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadApiCatalog, parseCatalog } from '../src/catalog.js';
-import { catalogResponse, trafficDefinition } from './fixtures.js';
+import { catalogResponse, testCatalog, trafficDefinition } from './fixtures.js';
 
 test('loads a valid remote catalog', async () => {
   const fetcher: typeof fetch = async () => catalogResponse([trafficDefinition]);
@@ -12,6 +12,16 @@ test('loads a valid remote catalog', async () => {
   });
   assert.equal(catalog.length, 1);
   assert.equal(catalog[0]?.id, 'traffic');
+});
+
+test('preserves oneOf child interfaces from the remote catalog', () => {
+  const parsed = parseCatalog({
+    code: 'ok',
+    data: { schemaVersion: 1, apis: testCatalog },
+  });
+  const statistics = parsed.find((definition) => definition.id === 'ads-statistics');
+  assert.equal(statistics?.inputSchema.oneOf?.length, 2);
+  assert.equal(statistics?.inputSchema.examples?.length, 2);
 });
 
 test('fails when the remote catalog is invalid', async () => {

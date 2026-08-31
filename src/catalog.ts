@@ -23,6 +23,25 @@ function isSchema(value: unknown): value is JsonSchema {
   if (value.maximum !== undefined && typeof value.maximum !== 'number') {
     return false;
   }
+  if (
+    value.minLength !== undefined &&
+    (typeof value.minLength !== 'number' ||
+      !Number.isInteger(value.minLength) ||
+      value.minLength < 0)
+  ) return false;
+  if (value.pattern !== undefined && typeof value.pattern !== 'string') return false;
+  if (
+    value.required !== undefined &&
+    (!Array.isArray(value.required) ||
+      !value.required.every((item) => typeof item === 'string'))
+  ) return false;
+  if (
+    value.oneOf !== undefined &&
+    (!Array.isArray(value.oneOf) ||
+      value.oneOf.length === 0 ||
+      !value.oneOf.every(isSchema))
+  ) return false;
+  if (value.examples !== undefined && !Array.isArray(value.examples)) return false;
   return true;
 }
 

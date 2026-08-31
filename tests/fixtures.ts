@@ -69,11 +69,73 @@ export const testCatalog = [
     path: '/api/v1/transparency',
     inputSchema: {
       type: 'object',
-      properties: { creativeIds: { type: 'string' } },
+      properties: {
+        keyword: { type: 'string', minLength: 1 },
+        domain: { type: 'string', minLength: 1 },
+        creativeIds: { type: 'string', minLength: 1 },
+      },
       additionalProperties: false,
+      oneOf: [
+        { type: 'object', required: ['keyword'] },
+        { type: 'object', required: ['domain'] },
+        { type: 'object', required: ['creativeIds'] },
+      ],
+      examples: [
+        { keyword: 'ai image' },
+        { domain: 'example.com' },
+        { creativeIds: 'AR123,AR456' },
+      ],
     },
-    mcpName: 'goanyapi_transparency',
+    mcpName: 'goanyapi_google_ads_transparency',
     description: 'Query ad transparency.',
+    readOnly: true,
+  },
+  {
+    id: 'ads-statistics',
+    method: 'GET',
+    path: '/api/v1/ads-statistics',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['advertiserSearch', 'advertiserStatistics'],
+        },
+        keyword: { type: 'string', minLength: 1 },
+        advertiserId: { type: 'string', pattern: '^\\d+$' },
+        startDay: { type: 'string' },
+        endDay: { type: 'string' },
+      },
+      required: ['action'],
+      additionalProperties: false,
+      oneOf: [
+        {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['advertiserSearch'] },
+          },
+          required: ['action', 'keyword'],
+        },
+        {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['advertiserStatistics'] },
+          },
+          required: ['action', 'advertiserId', 'startDay', 'endDay'],
+        },
+      ],
+      examples: [
+        { action: 'advertiserSearch', keyword: 'ai' },
+        {
+          action: 'advertiserStatistics',
+          advertiserId: '39687',
+          startDay: '2026-03-01',
+          endDay: '2026-03-31',
+        },
+      ],
+    },
+    mcpName: 'goanyapi_google_ads_transparency_statistics',
+    description: 'Query advertising statistics.',
     readOnly: true,
   },
   {

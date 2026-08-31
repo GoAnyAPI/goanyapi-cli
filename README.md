@@ -170,27 +170,25 @@ goanyapi traffic --help
 
 The CLI loads `/api/v1/mcp/catalog`. If the online catalog is unavailable or invalid, the command fails rather than using an outdated local definition.
 
-### API commands
+### API commands and child interfaces
 
-| Command | Purpose |
-| --- | --- |
-| `traffic` | Website traffic, ranking, and traffic sources |
-| `dr` | Domain Rating |
-| `backlink` | Backlink data |
-| `keyword-difficulty` | Keyword difficulty |
-| `keyword-generator` | Related keyword generation |
-| `google-autocomplete` | Google autocomplete suggestions |
-| `bing-autocomplete` | Bing autocomplete suggestions |
-| `top10-serp` | Top search results |
-| `serp` | Structured Google search results |
-| `bing-serp` | Structured Bing search results |
-| `google-intitle` | Google title search |
-| `google-site-search` | Google site-restricted search |
-| `adsense` | AdSense domain and publisher lookup |
-| `transparency` | Google Ads Transparency data |
-| `ads-statistics` | Advertising statistics |
-| `activity-credits` | Paginated credit activity |
-| `credits-balance` | Credit balance; alias: `balance` |
+The online catalog is the single source of truth. README does not duplicate the
+complete command list, so newly published APIs and child interfaces become
+discoverable without a documentation release:
+
+```bash
+# List every current top-level API
+goanyapi list
+
+# Show parameters, child modes, and catalog examples
+goanyapi describe ads-statistics
+
+# Invoke a child interface exposed by action + oneOf
+goanyapi ads-statistics advertiser-search --keyword ai --output json
+
+# Invoke a oneOf query mode
+goanyapi transparency --domain example.com --output json
+```
 
 Required parameters may also be positionals when unambiguous:
 
