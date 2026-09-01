@@ -35,6 +35,16 @@ export interface UpdateCheckOptions {
   now?: number;
   timeoutMs?: number;
   cacheFile?: string;
+  force?: boolean;
+}
+
+export interface UpdateInspection {
+  status: 'available' | 'up_to_date' | 'failed';
+  currentVersion: string;
+  latestVersion: string | null;
+  channel: ReleaseChannel;
+  fromCache: boolean;
+  update: UpdateInfo | null;
 }
 
 function parseVersion(version: string): ParsedVersion | null {
@@ -97,18 +107,19 @@ function flagEnabled(value: string | undefined): boolean {
   return Boolean(value && !['0', 'false', 'no'].includes(value.toLowerCase()));
 }
 
-export function shouldCheckForUpdates(
+export function shouldAutoUpdate(
   env: NodeJS.ProcessEnv,
-  interactive: boolean
+  noUpdate = false
 ): boolean {
   return (
-    interactive &&
+    !noUpdate &&
     !flagEnabled(env.CI) &&
+    !flagEnabled(env.GOANYAPI_NO_UPDATE) &&
     !flagEnabled(env.GOANYAPI_NO_UPDATE_CHECK)
   );
 }
 
-function defaultCacheFile(env: NodeJS.ProcessEnv): string {
+export function resolveUpdateCacheFile(env: NodeJS.ProcessEnv): string {
   if (process.platform === 'win32') {
     return join(env.LOCALAPPDATA || homedir(), 'GoAnyAPI', 'cli-update.json');
   }
@@ -170,17 +181,50 @@ function updateInfo(
 export async function checkForUpdate(
   options: UpdateCheckOptions
 ): Promise<UpdateInfo | null> {
+  const inspection = await inspectForUpdate(options);
+  return inspection.update;
+}
+
+function inspectionResult(
+  currentVersion: string,
+  latestVersion: string | null,
+  channel: ReleaseChannel,
+  fromCache: boolean
+): UpdateInspection {
+  const update = updateInfo(currentVersion, latestVersion, channel);
+  return {
+    status: latestVersion === null
+      ? 'failed'
+      : update
+        ? 'available'
+        : 'up_to_date',
+    currentVersion,
+    latestVersion,
+    channel,
+    fromCache,
+    update,
+  };
+}
+
+export async function inspectForUpdate(
+  options: UpdateCheckOptions
+): Promise<UpdateInspection> {
   const env = options.env ?? process.env;
   const now = options.now ?? Date.now();
   const channel = releaseChannelForVersion(options.currentVersion);
-  const cacheFile = options.cacheFile ?? defaultCacheFile(env);
+  const cacheFile = options.cacheFile ?? resolveUpdateCacheFile(env);
   const cached = await readCache(cacheFile);
-  if (cached?.channel === channel) {
+  if (!options.force && cached?.channel === channel) {
     const ttl = cached.latestVersion
       ? SUCCESS_CACHE_TTL_MS
       : FAILURE_CACHE_TTL_MS;
     if (now - cached.checkedAt >= 0 && now - cached.checkedAt < ttl) {
-      return updateInfo(options.currentVersion, cached.latestVersion, channel);
+      return inspectionResult(
+        options.currentVersion,
+        cached.latestVersion,
+        channel,
+        true
+      );
     }
   }
 
@@ -210,7 +254,12 @@ export async function checkForUpdate(
   }
 
   await writeCache(cacheFile, { channel, checkedAt: now, latestVersion });
-  return updateInfo(options.currentVersion, latestVersion, channel);
+  return inspectionResult(
+    options.currentVersion,
+    latestVersion,
+    channel,
+    false
+  );
 }
 
 export function renderUpdateNotice(info: UpdateInfo): string {

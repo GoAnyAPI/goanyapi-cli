@@ -1,6 +1,6 @@
 {
   "name": "@goanyapi/cli",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Official GoAnyAPI CLI for humans and AI agents",
   "keywords": [
     "goanyapi",

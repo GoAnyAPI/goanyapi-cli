@@ -13,6 +13,7 @@ export interface GlobalOptions {
   timeoutMs: number;
   help: boolean;
   version: boolean;
+  noUpdate: boolean;
 }
 
 export interface ParsedArguments {
@@ -43,6 +44,7 @@ export function parseArguments(
     timeoutMs: 45_000,
     help: false,
     version: false,
+    noUpdate: false,
   };
   const rest: string[] = [];
 
@@ -82,6 +84,8 @@ export function parseArguments(
       globals.help = true;
     } else if (token === '--version' || token === '-V') {
       globals.version = true;
+    } else if (token === '--no-update') {
+      globals.noUpdate = true;
     } else {
       rest.push(token);
     }

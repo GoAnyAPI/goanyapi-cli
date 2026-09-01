@@ -8,7 +8,7 @@ import {
   isNewerVersion,
   releaseChannelForVersion,
   renderUpdateNotice,
-  shouldCheckForUpdates,
+  shouldAutoUpdate,
 } from '../src/update-check.js';
 
 test('selects npm dist-tags from the installed release channel', () => {
@@ -23,14 +23,15 @@ test('compares stable and prerelease semantic versions', () => {
   assert.equal(isNewerVersion('invalid', '0.0.1'), false);
 });
 
-test('checks only interactive non-CI environments unless disabled', () => {
-  assert.equal(shouldCheckForUpdates({}, true), true);
-  assert.equal(shouldCheckForUpdates({ CI: 'true' }, true), false);
+test('checks in agent environments unless CI or updates are disabled', () => {
+  assert.equal(shouldAutoUpdate({}), true);
+  assert.equal(shouldAutoUpdate({ CI: 'true' }), false);
+  assert.equal(shouldAutoUpdate({}, true), false);
+  assert.equal(shouldAutoUpdate({ GOANYAPI_NO_UPDATE: '1' }), false);
   assert.equal(
-    shouldCheckForUpdates({ GOANYAPI_NO_UPDATE_CHECK: '1' }, true),
+    shouldAutoUpdate({ GOANYAPI_NO_UPDATE_CHECK: '1' }),
     false
   );
-  assert.equal(shouldCheckForUpdates({}, false), false);
 });
 
 test('uses the next tag and caches a successful registry check', async () => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runCli, type CliDependencies } from '../src/cli.js';
-import { DEFAULT_ENDPOINTS } from '../src/config.js';
+import { DEFAULT_ENDPOINTS, VERSION } from '../src/config.js';
 import type {
   CredentialStore,
   StoredCredential,
@@ -212,6 +212,48 @@ test('login uses release OAuth defaults independently from the API base URL', as
     loginOptions?.clientInstanceId,
     'gai_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
   );
+});
+
+test('checks for and installs CLI updates through explicit commands', async () => {
+  const checkOutput = capture();
+  assert.equal(
+    await runCli(['update', '--check'], {
+      stdout: checkOutput.writeOut,
+      stderr: checkOutput.writeErr,
+      env: {},
+      update: async (options) => {
+        assert.equal(options.force, true);
+        assert.equal(options.checkOnly, true);
+        return {
+          status: 'available',
+          currentVersion: VERSION,
+          latestVersion: '0.0.6',
+        };
+      },
+    }),
+    0
+  );
+  assert.match(checkOutput.stdout(), /Update available.*0\.0\.6/);
+
+  const updateOutput = capture();
+  assert.equal(
+    await runCli(['update'], {
+      stdout: updateOutput.writeOut,
+      stderr: updateOutput.writeErr,
+      env: {},
+      update: async (options) => {
+        assert.equal(options.force, true);
+        assert.equal(options.checkOnly, false);
+        return {
+          status: 'updated',
+          currentVersion: VERSION,
+          latestVersion: '0.0.6',
+        };
+      },
+    }),
+    0
+  );
+  assert.match(updateOutput.stdout(), /active|next command/i);
 });
 
 test('logout preserves the persistent client installation identity', async () => {
