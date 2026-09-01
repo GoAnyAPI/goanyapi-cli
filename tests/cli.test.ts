@@ -227,13 +227,13 @@ test('checks for and installs CLI updates through explicit commands', async () =
         return {
           status: 'available',
           currentVersion: VERSION,
-          latestVersion: '0.0.6',
+          latestVersion: '0.1.1',
         };
       },
     }),
     0
   );
-  assert.match(checkOutput.stdout(), /Update available.*0\.0\.6/);
+  assert.match(checkOutput.stdout(), /Update available.*0\.1\.1/);
 
   const updateOutput = capture();
   assert.equal(
@@ -247,7 +247,7 @@ test('checks for and installs CLI updates through explicit commands', async () =
         return {
           status: 'updated',
           currentVersion: VERSION,
-          latestVersion: '0.0.6',
+          latestVersion: '0.1.1',
         };
       },
     }),
