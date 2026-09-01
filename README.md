@@ -16,6 +16,7 @@ The official command-line client for [GoAnyAPI](https://goanyapi.com), built for
 - **Easy interactive login** — OAuth Authorization Code with PKCE opens the browser and returns through a loopback callback.
 - **Automation-ready** — API keys work naturally in CI/CD, cron, Docker, and server scripts.
 - **Secure credential storage** — credentials use Windows Credential Locker, macOS Keychain, or Linux Secret Service.
+- **Per-installation authorization** — each OS-user installation keeps a random client identity, so repeated logins replace the same connection while other computers remain independently revocable.
 - **Structured output** — choose pretty JSON, compact JSON, raw responses, or only the response `data` field.
 
 ## Who is it for?
@@ -220,6 +221,7 @@ Catalog names accept kebab-case aliases: `creativeIds`, `setLang`, and `search_t
 -o, --output <mode>        pretty, json, or raw (default: pretty)
     --data-only            Print only the response data field
     --timeout <seconds>     Request timeout (default: 45)
+    --no-update             Skip automatic update for this command
 -h, --help                 Show help
 -V, --version              Show version
 ```
@@ -232,13 +234,24 @@ Catalog names accept kebab-case aliases: `creativeIds`, `setLang`, and `search_t
 | `GOANYAPI_BASE_URL` | Override the REST API base URL |
 | `GOANYAPI_OAUTH_ISSUER` | Override the OAuth issuer for development |
 | `GOANYAPI_OAUTH_RESOURCE` | Override the OAuth resource for development |
-| `GOANYAPI_NO_UPDATE_CHECK=1` | Disable npm update checks |
+| `GOANYAPI_NO_UPDATE=1` | Disable automatic updates |
+| `GOANYAPI_PACKAGE_MANAGER` | Select `npm`, `pnpm`, `yarn`, or `bun` for global updates |
 
 Stable releases use production endpoints. Versions containing `-next` use GoAnyAPI test endpoints by default.
 
-### Update notices
+### Automatic updates
 
-Interactive terminals check the matching npm channel and may print a non-blocking update notice. Successful checks are cached for 24 hours. CI and non-interactive processes do not display notices.
+The CLI checks its matching npm release channel during startup. Successful checks are cached for one hour; registry failures retry after five minutes and installation failures retry after fifteen minutes. When a new version is available, the CLI updates through the detected package manager, falling back to npm when it cannot identify one. The current command continues with the already-loaded version, and the next command uses the new version.
+
+Update failures only write a warning to stderr and never block the requested command. A cross-process lock prevents concurrent agents from installing at the same time. Automatic updates are disabled when `CI=true`.
+
+```bash
+goanyapi update --check  # Check now without installing
+goanyapi update          # Check and install now
+goanyapi --no-update traffic example.com
+```
+
+`GOANYAPI_NO_UPDATE_CHECK=1` remains supported as a legacy opt-out.
 
 ### Exit codes
 

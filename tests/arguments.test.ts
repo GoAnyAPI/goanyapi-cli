@@ -21,6 +21,14 @@ test('parses global options independently of API arguments', () => {
   assert.equal(parsed.globals.baseUrl, DEFAULT_ENDPOINTS.apiBaseUrl);
   assert.equal(parsed.globals.output, 'json');
   assert.equal(parsed.globals.timeoutMs, 2_000);
+  assert.equal(parsed.globals.noUpdate, false);
+});
+
+test('parses the per-command automatic update opt-out', () => {
+  const parsed = parseArguments(['--no-update', 'traffic', 'example.com']);
+
+  assert.equal(parsed.globals.noUpdate, true);
+  assert.deepEqual(parsed.rest, ['traffic', 'example.com']);
 });
 
 test('allows the release default API URL to be overridden', () => {

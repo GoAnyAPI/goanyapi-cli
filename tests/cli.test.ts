@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runCli, type CliDependencies } from '../src/cli.js';
-import { DEFAULT_ENDPOINTS } from '../src/config.js';
+import { DEFAULT_ENDPOINTS, VERSION } from '../src/config.js';
 import type {
   CredentialStore,
   StoredCredential,
@@ -149,6 +149,10 @@ test('saves OAuth login and reports authentication status', async () => {
       stderr: output.writeErr,
       env: {},
       credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () =>
+          'gai_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      },
       login: async () => oauth,
     }),
     0
@@ -191,6 +195,10 @@ test('login uses release OAuth defaults independently from the API base URL', as
       stderr: output.writeErr,
       env: {},
       credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () =>
+          'gai_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+      },
       login: async (options) => {
         loginOptions = options;
         return oauth;
@@ -200,6 +208,80 @@ test('login uses release OAuth defaults independently from the API base URL', as
   );
   assert.equal(loginOptions?.issuer, DEFAULT_ENDPOINTS.oauthIssuer);
   assert.equal(loginOptions?.resource, DEFAULT_ENDPOINTS.oauthResource);
+  assert.equal(
+    loginOptions?.clientInstanceId,
+    'gai_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+  );
+});
+
+test('checks for and installs CLI updates through explicit commands', async () => {
+  const checkOutput = capture();
+  assert.equal(
+    await runCli(['update', '--check'], {
+      stdout: checkOutput.writeOut,
+      stderr: checkOutput.writeErr,
+      env: {},
+      update: async (options) => {
+        assert.equal(options.force, true);
+        assert.equal(options.checkOnly, true);
+        return {
+          status: 'available',
+          currentVersion: VERSION,
+          latestVersion: '0.0.6',
+        };
+      },
+    }),
+    0
+  );
+  assert.match(checkOutput.stdout(), /Update available.*0\.0\.6/);
+
+  const updateOutput = capture();
+  assert.equal(
+    await runCli(['update'], {
+      stdout: updateOutput.writeOut,
+      stderr: updateOutput.writeErr,
+      env: {},
+      update: async (options) => {
+        assert.equal(options.force, true);
+        assert.equal(options.checkOnly, false);
+        return {
+          status: 'updated',
+          currentVersion: VERSION,
+          latestVersion: '0.0.6',
+        };
+      },
+    }),
+    0
+  );
+  assert.match(updateOutput.stdout(), /active|next command/i);
+});
+
+test('logout preserves the persistent client installation identity', async () => {
+  const output = capture();
+  const credentials = memoryStore({
+    kind: 'api_key',
+    apiKey: 'ga_saved',
+  });
+  let installationStoreAccessed = false;
+
+  assert.equal(
+    await runCli(['logout'], {
+      stdout: output.writeOut,
+      stderr: output.writeErr,
+      env: {},
+      credentialStore: credentials.store,
+      installationStore: {
+        loadOrCreate: async () => {
+          installationStoreAccessed = true;
+          return 'gai_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC';
+        },
+      },
+    }),
+    0
+  );
+
+  assert.equal(credentials.current(), null);
+  assert.equal(installationStoreAccessed, false);
 });
 
 test('auth set-key uses hidden prompt input and stores the key', async () => {

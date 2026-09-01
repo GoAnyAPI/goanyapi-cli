@@ -11,6 +11,10 @@ import {
 } from './credential-store.js';
 import { ApiRequestError, UsageError } from './errors.js';
 import {
+  createSystemInstallationStore,
+  type InstallationStore,
+} from './installation-store.js';
+import {
   DEFAULT_OAUTH_ISSUER,
   DEFAULT_OAUTH_RESOURCE,
   loginWithBrowser,
@@ -24,6 +28,7 @@ import {
   renderValue,
 } from './output.js';
 import { promptSecret } from './prompt.js';
+import { updateCli, type CliUpdateOptions } from './update.js';
 
 export { VERSION } from './config.js';
 
@@ -33,8 +38,10 @@ export interface CliDependencies {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   credentialStore?: CredentialStore;
+  installationStore?: InstallationStore;
   login?: typeof loginWithBrowser;
   promptSecret?: (label: string) => Promise<string>;
+  update?: (options: CliUpdateOptions) => ReturnType<typeof updateCli>;
   now?: () => number;
 }
 
@@ -61,9 +68,16 @@ export async function runCli(
   const stderr = dependencies.stderr ?? ((text) => process.stderr.write(text));
   const fetcher = dependencies.fetch ?? globalThis.fetch;
   let credentialStore = dependencies.credentialStore;
+  let installationStore = dependencies.installationStore;
   const getCredentialStore = () => {
     credentialStore ??= createSystemCredentialStore();
     return credentialStore;
+  };
+  const getInstallationStore = () => {
+    installationStore ??= createSystemInstallationStore({
+      env: dependencies.env ?? process.env,
+    });
+    return installationStore;
   };
 
   try {
@@ -98,7 +112,8 @@ export async function runCli(
       if (
         requested === 'login' ||
         requested === 'logout' ||
-        requested === 'auth'
+        requested === 'auth' ||
+        requested === 'update'
       ) {
         requested = undefined;
       }
@@ -114,7 +129,9 @@ export async function runCli(
 
     if (command === 'login') {
       if (rest.length > 1) throw new UsageError('login does not accept arguments.');
+      const clientInstanceId = await getInstallationStore().loadOrCreate();
       const oauth = await (dependencies.login ?? loginWithBrowser)({
+        clientInstanceId,
         issuer:
           (dependencies.env ?? process.env).GOANYAPI_OAUTH_ISSUER ??
           DEFAULT_OAUTH_ISSUER,
@@ -127,6 +144,58 @@ export async function runCli(
       });
       await getCredentialStore().save(oauth);
       stdout('Logged in to GoAnyAPI with OAuth.\n');
+      return 0;
+    }
+
+    if (command === 'update') {
+      if (
+        rest.length > 2 ||
+        (rest.length === 2 && rest[1] !== '--check')
+      ) {
+        throw new UsageError('Usage: goanyapi update [--check]');
+      }
+      const checkOnly = rest[1] === '--check';
+      const result = await (dependencies.update ?? updateCli)({
+        currentVersion: VERSION,
+        env: dependencies.env ?? process.env,
+        fetch: fetcher,
+        ...(dependencies.now ? { now: dependencies.now() } : {}),
+        force: true,
+        checkOnly,
+      });
+      if (result.status === 'check_failed') {
+        stderr('Error: Unable to check for GoAnyAPI CLI updates.\n');
+        return 1;
+      }
+      if (result.status === 'up_to_date') {
+        stdout(`GoAnyAPI CLI is up to date: v${VERSION}\n`);
+        return 0;
+      }
+      if (result.status === 'available' && result.latestVersion) {
+        stdout(
+          `Update available: v${VERSION} -> v${result.latestVersion}\n` +
+          'Run goanyapi update to install it.\n'
+        );
+        return 0;
+      }
+      if (result.status === 'updated' && result.latestVersion) {
+        stdout(
+          `GoAnyAPI CLI updated: v${VERSION} -> v${result.latestVersion}\n` +
+          'Run your next command to use the new version.\n'
+        );
+        return 0;
+      }
+      if (result.status === 'busy') {
+        stdout('Another GoAnyAPI CLI update is already in progress.\n');
+        return 0;
+      }
+      if (result.status === 'install_failed') {
+        stderr(
+          `Error: GoAnyAPI CLI update failed. ${result.message ?? ''}`.trimEnd() +
+          '\n'
+        );
+        return 1;
+      }
       return 0;
     }
 

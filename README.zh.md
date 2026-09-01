@@ -16,6 +16,7 @@
 - **交互登录简单** — 使用 OAuth Authorization Code + PKCE，自动打开浏览器并通过本机回调完成授权。
 - **适合自动化** — API Key 可用于 CI/CD、Cron、Docker 和服务器脚本。
 - **凭证安全存储** — 使用 Windows Credential Locker、macOS Keychain 或 Linux Secret Service。
+- **按安装实例授权** — 每个操作系统用户下的 CLI 安装保存随机客户端标识；同一客户端重新登录会替换原连接，不同电脑可独立撤销。
 - **结构化输出** — 支持格式化 JSON、紧凑 JSON、原始响应，以及只输出 `data` 字段。
 
 ## 适合哪些场景？
@@ -211,6 +212,7 @@ Catalog 参数名支持 kebab-case 别名。例如 `creativeIds`、`setLang` 和
 -o, --output <mode>        pretty、json 或 raw（默认：pretty）
     --data-only            只输出响应中的 data 字段
     --timeout <seconds>     请求超时时间（默认：45 秒）
+    --no-update             本次命令跳过自动更新
 -h, --help                 显示帮助
 -V, --version              显示版本
 ```
@@ -223,13 +225,24 @@ Catalog 参数名支持 kebab-case 别名。例如 `creativeIds`、`setLang` 和
 | `GOANYAPI_BASE_URL` | 覆盖 REST API Base URL |
 | `GOANYAPI_OAUTH_ISSUER` | 开发时覆盖 OAuth Issuer |
 | `GOANYAPI_OAUTH_RESOURCE` | 开发时覆盖 OAuth Resource |
-| `GOANYAPI_NO_UPDATE_CHECK=1` | 禁用 npm 版本检查 |
+| `GOANYAPI_NO_UPDATE=1` | 禁用自动更新 |
+| `GOANYAPI_PACKAGE_MANAGER` | 指定 `npm`、`pnpm`、`yarn` 或 `bun` 执行全局更新 |
 
 正式版本默认连接生产环境；版本号中包含 `-next` 的预发布版本默认连接测试环境。
 
-### 升级提示
+### 自动升级
 
-CLI 在交互式终端中检查对应的 npm 发布通道，并可能输出非阻塞升级提示。成功结果缓存 24 小时；CI 和非交互进程不会显示提示。
+CLI 默认在命令启动阶段检查对应的 npm 发布通道。成功检查结果缓存 1 小时；Registry 查询失败 5 分钟后重试，安装失败 15 分钟后重试。发现新版时，CLI 使用检测到的包管理器执行全局更新，无法识别时使用 npm；当前命令继续使用已加载的旧版本，下一次命令开始使用新版。
+
+自动更新失败只会向 stderr 输出警告，原命令仍会继续执行。多个 Agent 并发调用时只有一个进程更新，其他进程直接继续。`CI=true` 时默认禁用自动更新。
+
+```bash
+goanyapi update --check  # 立即检查，不安装
+goanyapi update          # 立即检查并安装
+goanyapi --no-update traffic example.com
+```
+
+`GOANYAPI_NO_UPDATE_CHECK=1` 作为旧版兼容开关仍然有效。
 
 ### 退出码
 

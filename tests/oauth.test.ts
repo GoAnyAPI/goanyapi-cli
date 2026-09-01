@@ -36,6 +36,7 @@ test('browser login uses the fixed CLI client, PKCE, and loopback callback', asy
   };
 
   const credential = await loginWithBrowser({
+    clientInstanceId: 'gai_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     issuer: metadata.issuer,
     resource: 'https://api.goanyapi.com',
     fetch: fetcher,
@@ -59,6 +60,10 @@ test('browser login uses the fixed CLI client, PKCE, and loopback callback', asy
   });
 
   assert.equal(authorizationUrl?.searchParams.get('client_id'), OAUTH_CLIENT_ID);
+  assert.equal(
+    authorizationUrl?.searchParams.get('client_instance_id'),
+    'gai_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+  );
   assert.equal(authorizationUrl?.searchParams.get('scope'), OAUTH_SCOPE);
   assert.equal(
     authorizationUrl?.searchParams.get('resource'),
